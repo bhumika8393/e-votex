@@ -528,7 +528,6 @@ function renderHostLogin() {
 const HOST_STEPS=['Election Details','Organizer Info','Add Voters','Add Candidates','Ballot Config','Security','Results','Notifications','Review'];
 
 function renderHostFlow() {
-    const fns=[renderHostStep1,renderHostStep2,renderHostStep3,renderHostStep4,renderHostStep5,renderHostStep6,renderHostStep7,renderHostStep8,renderHostStep9];
     const pct=((state.hostStep-1)/(HOST_STEPS.length-1))*100;
     return `
     <div class="host-page">
@@ -574,22 +573,6 @@ function renderHostStep2() {
     </div>${hostNavBtns()}`;
 }
 
-function renderHostStep3() {
-    const d=state.hostData;
-    return `<div class="hs-section">
-        <div class="hs-title">ADD VOTERS</div><div class="hs-sub">Add voters who will be eligible to cast votes</div>
-        <div class="hs-list-box">
-            ${d.voters.length===0?`<div class="hs-empty"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#9ca3af" stroke-width="1.5"/><path d="M4 20c0-3.866 3.582-7 8-7" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/><path d="M18 14v6M15 17h6" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg><div>No voters added yet</div></div>`
-            :d.voters.map((v,i)=>`<div class="hs-list-item"><div class="hs-list-avatar">${v.name.charAt(0).toUpperCase()}</div><div><div class="hs-list-name">${v.name}</div><div class="hs-list-sub">${v.phone}</div></div><button class="hs-remove-btn" data-remove-voter="${i}">✕</button></div>`).join('')}
-        </div>
-        <div class="hs-add-row">
-            <input class="hs-mini-input" id="h_voterName" placeholder="Voter name">
-            <input class="hs-mini-input" id="h_voterPhone" placeholder="Phone number" maxlength="10">
-            <button class="hs-add-btn" id="addVoterBtn">+ ADD VOTER</button>
-        </div>
-    </div>${hostNavBtns()}`;
-}
-
 function renderHostStep4() {
     const d=state.hostData;
     return `<div class="hs-section">
@@ -613,8 +596,7 @@ function renderHostStep5() {
         <div class="hs-title">BALLOT CONFIGURATION</div><div class="hs-sub">Configure voting rules and ballot settings</div>
         <div class="hs-info-card"><div class="hs-ic-icon" style="background:#f0fdfb">📋</div><div><div class="hs-ic-label">Candidates on Ballot</div><div class="hs-ic-val">${d.candidates.length} candidates</div></div></div>
         <div class="hs-info-card"><div class="hs-ic-icon" style="background:#f0fdfb">⚖️</div><div><div class="hs-ic-label">Voting Rule</div><div class="hs-ic-val">One vote per voter</div></div></div>
-        <div class="hs-info-card"><div class="hs-ic-icon" style="background:#f9fafb">👤</div><div><div class="hs-ic-label">Eligible Voters</div><div class="hs-ic-val">${d.voters.length} voters</div></div></div>
-    </div>${hostNavBtns()}`;
+       
 }
 
 function renderHostStep6() {
@@ -854,11 +836,6 @@ function attachListeners() {
     document.querySelectorAll('.host-tab').forEach(tab=>tab.addEventListener('click',()=>{state.hostStep=parseInt(tab.dataset.hstep);render();}));
     document.getElementById('hostNext')?.addEventListener('click',handleHostNext);
     document.getElementById('hostPrev')?.addEventListener('click',()=>{state.hostStep--;render();});
-    document.getElementById('addVoterBtn')?.addEventListener('click',()=>{
-        const name=document.getElementById('h_voterName')?.value?.trim(),phone=document.getElementById('h_voterPhone')?.value?.trim();
-        if(!name||!phone){showToast('Enter voter name and phone','error');return;}
-        state.hostData.voters.push({name,phone,id:Date.now()});render();
-    });
     document.querySelectorAll('[data-remove-voter]').forEach(btn=>btn.addEventListener('click',()=>{state.hostData.voters.splice(parseInt(btn.dataset.removeVoter),1);render();}));
     document.getElementById('addCandBtn')?.addEventListener('click',()=>{
         const name=document.getElementById('h_candName')?.value?.trim(),party=document.getElementById('h_candParty')?.value?.trim(),symbol=document.getElementById('h_candSymbol')?.value?.trim()||'🗳️';

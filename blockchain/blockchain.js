@@ -1,33 +1,22 @@
-const Block = require("./block")
+const Block=require("./block")
 
 class Blockchain{
 
 constructor(){
-
-this.chain = [this.createGenesisBlock()]
-
+this.chain=[this.createGenesisBlock()]
 }
 
 createGenesisBlock(){
-
-return new Block(
-0,
-Date.now(),
-"Genesis Block",
-"0"
-)
-
+return new Block(0,Date.now(),"Genesis Block","0")
 }
 
 getLatestBlock(){
-
-return this.chain[this.chain.length - 1]
-
+return this.chain[this.chain.length-1]
 }
 
 addBlock(data){
 
-const newBlock = new Block(
+const newBlock=new Block(
 this.chain.length,
 Date.now(),
 data,
@@ -40,4 +29,4 @@ this.chain.push(newBlock)
 
 }
 
-module.exports = Blockchain
+module.exports=Blockchain

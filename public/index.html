@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 
@@ -25,15 +26,11 @@ margin:10px;
 cursor:pointer;
 }
 
-#otpSection{
-display:none;
-}
-
+#signupSection,
+#forgotSection,
+#otpSection,
+#resetSection,
 #voteSection{
-display:none;
-}
-
-#resultSection{
 display:none;
 }
 
@@ -45,17 +42,73 @@ display:none;
 
 <h1>CipherVoteX Voting System</h1>
 
+<!-- LOGIN -->
+
 <div id="loginSection">
 
-<h3>Enter Phone Number</h3>
+<h3>Login</h3>
 
-<input id="phoneInput" placeholder="Phone number">
+<input id="loginPhone" placeholder="Phone">
+
+<br>
+
+<input id="loginPassword" type="password" placeholder="Password">
+
+<br>
+
+<button onclick="login()">Login</button>
+
+<br>
+
+<button onclick="showSignup()">Create Account</button>
+
+<br>
+
+<button onclick="showForgot()">Forgot Password</button>
+
+</div>
+
+<!-- SIGNUP -->
+
+<div id="signupSection">
+
+<h3>Create Account</h3>
+
+<input id="signupName" placeholder="Name">
+
+<br>
+
+<input id="signupPhone" placeholder="Phone">
+
+<br>
+
+<input id="signupPassword" type="password" placeholder="Password">
+
+<br>
+
+<button onclick="signup()">Sign Up</button>
+
+<br>
+
+<button onclick="showLogin()">Back to Login</button>
+
+</div>
+
+<!-- FORGOT PASSWORD -->
+
+<div id="forgotSection">
+
+<h3>Forgot Password</h3>
+
+<input id="forgotPhone" placeholder="Phone">
 
 <br>
 
 <button onclick="sendOTP()">Send OTP</button>
 
 </div>
+
+<!-- OTP -->
 
 <div id="otpSection">
 
@@ -69,6 +122,22 @@ display:none;
 
 </div>
 
+<!-- RESET PASSWORD -->
+
+<div id="resetSection">
+
+<h3>Reset Password</h3>
+
+<input id="newPassword" type="password" placeholder="New Password">
+
+<br>
+
+<button onclick="resetPassword()">Reset Password</button>
+
+</div>
+
+<!-- VOTE -->
+
 <div id="voteSection">
 
 <h2>Select Candidate</h2>
@@ -79,19 +148,17 @@ display:none;
 
 <button onclick="vote('Charlie')">Charlie</button>
 
-</div>
+<br><br>
 
-<div id="resultSection">
-
-<h2>Results</h2>
-
-<div id="results"></div>
-
-<button onclick="loadResults()">Refresh Results</button>
+<button onclick="logout()">Sign Out</button>
 
 </div>
 
 <script src="App.js"></script>
-</body>
 
+<script>
+document.getElementById("loginSection").style.display="block"
+</script>
+
+</body>
 </html>

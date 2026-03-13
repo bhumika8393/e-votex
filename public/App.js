@@ -460,6 +460,14 @@ function renderElectionDetail() {
         <div class="dash-topbar"><div class="dash-brand">SARVAMAT // VOTING<span>${e.name}</span></div>
         <button class="btn-outline" id="backToDash">← Back</button></div>
         <div class="dash-body">
+            <div class="admin-strip" style="margin-bottom:18px">
+                <div class="admin-strip-label">Admin Controls (Demo)</div>
+                <div class="admin-strip-btns">
+                    <button class="admin-tag upcoming" data-status="upcoming">Set Upcoming</button>
+                    <button class="admin-tag active" data-status="active">Set Active</button>
+                    <button class="admin-tag ended" data-status="ended">Set Ended</button>
+                </div>
+            </div>
             ${state.user?.has_voted?`
             <div class="voted-banner"><div class="voted-check">✅</div><div class="voted-title">Vote Cast Successfully!</div>
             <div class="voted-sub">Your vote is securely recorded on the blockchain.<br><span style="color:#00b896;font-weight:600">Block hash logged in server console.</span></div></div>`
@@ -480,14 +488,6 @@ function renderElectionDetail() {
                     <span>CAST ENCRYPTED VOTE</span>
                 </div>
             </div>`}
-            <div class="admin-strip">
-                <div class="admin-strip-label">Admin Controls (Demo)</div>
-                <div class="admin-strip-btns">
-                    <button class="admin-tag upcoming" data-status="upcoming">Set Upcoming</button>
-                    <button class="admin-tag active" data-status="active">Set Active</button>
-                    <button class="admin-tag ended" data-status="ended">Set Ended</button>
-                </div>
-            </div>
         </div>
     </div>`;
 }

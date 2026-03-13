@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>CipherVoteX</title>
+
+<style>
+
+body{
+font-family:Arial;
+text-align:center;
+margin-top:80px;
+}
+
+input{
+padding:10px;
+width:250px;
+margin:10px;
+}
+
+button{
+padding:10px 20px;
+margin:10px;
+cursor:pointer;
+}
+
+#otpSection{
+display:none;
+}
+
+#voteSection{
+display:none;
+}
+
+#resultSection{
+display:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>CipherVoteX Voting System</h1>
+
+<div id="loginSection">
+
+<h3>Enter Phone Number</h3>
+
+<input id="phoneInput" placeholder="Phone number">
+
+<br>
+
+<button onclick="sendOTP()">Send OTP</button>
+
+</div>
+
+<div id="otpSection">
+
+<h3>Enter OTP</h3>
+
+<input id="otpInput" placeholder="OTP">
+
+<br>
+
+<button onclick="verifyOTP()">Verify OTP</button>
+
+</div>
+
+<div id="voteSection">
+
+<h2>Select Candidate</h2>
+
+<button onclick="vote('Alice')">Alice</button>
+
+<button onclick="vote('Bob')">Bob</button>
+
+<button onclick="vote('Charlie')">Charlie</button>
+
+</div>
+
+<div id="resultSection">
+
+<h2>Results</h2>
+
+<div id="results"></div>
+
+<button onclick="loadResults()">Refresh Results</button>
+
+</div>
+
+<script src="App.js"></script>
+</body>
+
+</html>

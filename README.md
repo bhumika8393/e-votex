@@ -30,26 +30,20 @@
 The platform uses a clean, role-based entry system. Our backend console tracks every authentication event (OTP) to prevent brute-force attacks.
 
 | Role Selection | Security Logs (OTP) |
-| :--- | :--- |
-| ![Role Selection](assets/Screenshot%202026-03-14%20063947.png) | ![Console Logs](assets/Screenshot%202026-03-14%20064326.png) |
-
+|
 ### 2. Multi-Stage Registration
 Identity is verified through a 4-step process: Identity -> OTP -> Face -> Biometric. This ensures 100% user accountability.
 
-![Registration Flow](assets/Screenshot%202026-03-14%20064042.png)
 *Registration interface showing Aadhaar validation and biometric security toggles.*
 
 ### 3. Real-Time Dashboards
 Voters can browse live elections like the **General Election 2024**, while Hosts manage local polls like the **Panchayat Election 2026** with deep administrative tools.
 
 | Voter Dashboard | Host Management |
-| :--- | :--- |
-| ![Voter Dash](assets/WhatsApp%20Image%202026-03-14%20at%207.05.41%20AM.jpeg) | ![Host Dash](assets/WhatsApp%20Image%202026-03-14%20at%207.06.33%20AM.jpeg) |
+
 
 ### 4. Verified Results
-Hosts have access to a live "Vote Distribution" panel that displays the winner while confirming that the **Blockchain is Valid** and encryption is active.
-
-![Election Results](assets/WhatsApp%20Image%202026-03-14%20at%207.06.58%20AM.jpeg)
+Hosts have access to a live "Vote Distribution" panel that displays the winner while confirming that the **Blockchain is Valid** and encryption is active
 
 ---
 

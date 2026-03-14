@@ -1,73 +1,161 @@
-# 🗳️ SarvaMat: The Blockchain E-Voting Ecosystem
+# 🗳️ SarvaMat — Blockchain E-Voting System
 
-### Empowering Democracy through Cryptographic Integrity and AI-Driven Identity.
-**SarvaMat** is a next-generation decentralized voting platform designed to eliminate electoral fraud. It combines **AES-256 encrypted payloads**, **Biometric Identity verification**, and **Immutable Blockchain ledgers** into a seamless, high-trust experience for both voters and hosts.
-
----
-
-## 🚀 Key Features
-
-### 🔐 Multi-Factor Identity (MFI)
-* **Aadhaar Integration:** Secure 12-digit Digital ID validation to ensure "One Person, One Vote."
-* **Biometric Shield:** Integrated FaceID and Fingerprint toggles for hardware-level authentication.
-* **Dual-Channel OTP:** Server-side generated 6-digit codes for real-time mobile verification and password resets.
-
-### ⛓️ Blockchain Integrity
-* **Immutable Ledger:** Every cast vote is hashed and recorded on a tamper-proof blockchain.
-* **Auditability:** A "Blockchain Valid" engine that allows hosts to verify the sanctity of the entire election in real-time.
-* **AES-256 Defense:** Sensitive voter data is encrypted at rest using industry-standard AES-256 before being hashed.
-
-### 📊 Intelligence & Management
-* **Dual-Role Portals:** Distinct, optimized dashboards for **Voters** (Participation) and **Hosts** (Administration).
-* **Live Analytics:** Real-time vote distribution heatmaps and countdown timers for active elections.
-* **Status Tracking:** Persistent monitoring of "Verified" vs. "Pending" voter statuses to maintain system health.
+A secure, tamper-proof e-voting platform where every vote is recorded as an immutable block on a custom blockchain.
 
 ---
 
-## 📸 System Walkthrough
+## ✨ Features
 
-### 1. Onboarding & Authentication
-The platform uses a clean, role-based entry system. Our backend console tracks every authentication event (OTP) to prevent brute-force attacks.
-
-| Role Selection | Security Logs (OTP) |
-|
-### 2. Multi-Stage Registration
-Identity is verified through a 4-step process: Identity -> OTP -> Face -> Biometric. This ensures 100% user accountability.
-
-*Registration interface showing Aadhaar validation and biometric security toggles.*
-
-### 3. Real-Time Dashboards
-Voters can browse live elections like the **General Election 2024**, while Hosts manage local polls like the **Panchayat Election 2026** with deep administrative tools.
-
-| Voter Dashboard | Host Management |
-
-
-### 4. Verified Results
-Hosts have access to a live "Vote Distribution" panel that displays the winner while confirming that the **Blockchain is Valid** and encryption is active
+- **Voter** — Register with Aadhar + OTP, cast votes in live elections
+- **Host** — Create & manage elections via an 8-step wizard, view live results
+- **Blockchain** — Every vote = one mined SHA-256 block (Proof-of-Work)
+- **Security** — AES-256 encryption, one-vote-per-voter enforcement
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Frontend (React / Next.js)
-* **UI/UX:** High-fidelity, accessible components with Tailwind CSS.
-* **State:** Real-time data fetching for live election countdowns.
-* **Hardware:** Integration with WebAuthn/Biometric APIs for secure login.
-
-### Backend & Security
-* **Encryption:** AES-256 CBC mode for sensitive data storage.
-* **Auth:** JWT-based sessions coupled with 6-digit OTP verification.
-* **Ledger:** Distributed hashing to ensure data immutability.
+| | |
+|---|---|
+| Frontend | Vanilla HTML, CSS, JavaScript |
+| Backend | Node.js + Express.js |
+| Database | SQLite3 |
+| Blockchain | Custom (`block.js` + `blockchain.js`) |
 
 ---
 
-## 🚦 Quick Start
+## 🚀 Getting Started
+```bash
+git clone https://github.com/bhumika8393/e-votex.git
+cd e-votex
+npm install express cors sqlite3
+node server/server.js
+```
 
-### Prerequisites
-* Node.js v18+
-* NPM or Yarn
+Open **http://localhost:3000** — OTPs appear in the server console.
 
-### Installation
-1. **Clone the Repo**
-   ```bash
+---
+
+## 📁 Structure
+```
+e-votex/
+├── public/        → index.html, App.js
+├── blockchain/    → block.js, blockchain.js
+├── server/        → server.js, voters.db
+└── assets/        → screenshots
+```
+
+---
+
+## 📸 Screenshots
+
+**Role Selection**
+
+<img src="assets/Screenshot 2026-03-14 063947.png" width="100%"/>
+
+---
+
+**Voter Login**
+
+<img src="assets/Screenshot 2026-03-14 063830.png" width="100%"/>
+
+---
+
+**Voter Registration**
+
+<img src="assets/Screenshot 2026-03-14 064042.png" width="100%"/>
+
+---
+
+**OTP Verification**
+
+<img src="assets/Screenshot 2026-03-14 064135.png" width="100%"/>
+
+---
+
+**Password Reset**
+
+<img src="assets/Screenshot 2026-03-14 064308.png" width="100%"/>
+
+---
+
+**Server Console — OTP Output**
+
+<img src="assets/Screenshot 2026-03-14 064326.png" width="100%"/>
+
+---
+
+**Voter Dashboard**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.05.41 AM.jpeg" width="100%"/>
+
+---
+
+**Host Dashboard**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.06.33 AM.jpeg" width="100%"/>
+
+---
+
+**Results Dashboard**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.06.58 AM.jpeg" width="100%"/>
+
+---
+
+**Host Sign Up**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.07.27 AM.jpeg" width="100%"/>
+
+---
+
+**Step 1 — Election Details**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.08.10 AM.jpeg" width="100%"/>
+
+---
+
+**Step 2 — Organizer Info**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.08.33 AM.jpeg" width="100%"/>
+
+---
+
+**Step 3 — Add Candidates**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.08.52 AM.jpeg" width="100%"/>
+
+---
+
+**Step 4 — Ballot Config**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.09.10 AM.jpeg" width="100%"/>
+
+---
+
+**Step 5 — Security Settings**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.09.31 AM.jpeg" width="100%"/>
+
+---
+
+**Step 6 — Results Settings**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.09.46 AM.jpeg" width="100%"/>
+
+---
+
+**Step 7 — Notifications**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.10.01 AM.jpeg" width="100%"/>
+
+---
+
+**Step 8 — Review & Submit**
+
+<img src="assets/WhatsApp Image 2026-03-14 at 7.10.24 AM.jpeg" width="100%"/>
+
+---
+
+<div align="center">Built with ⛓️ by the SarvaMat Team</div>
    git clone [https://github.com/bhumika8393/e-votex.git](https://github.com/bhumika8393/e-votex.git)

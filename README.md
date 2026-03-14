@@ -1,19 +1,79 @@
+# 🗳️ SarvaMat: The Blockchain E-Voting Ecosystem
 
-# 🗳️ SarvaMat - E-Voting System
+### Empowering Democracy through Cryptographic Integrity and AI-Driven Identity.
+**SarvaMat** is a next-generation decentralized voting platform designed to eliminate electoral fraud. It combines **AES-256 encrypted payloads**, **Biometric Identity verification**, and **Immutable Blockchain ledgers** into a seamless, high-trust experience for both voters and hosts.
 
-A secure blockchain-based electronic voting system with phone authentication.
+---
 
-## Features
+## 🚀 Key Features
 
-- 📱 Phone number authentication with OTP
-- 🔐 Secure signup with Aadhar verification
-- 🗳️ Real-time voting with blockchain security
-- ⛓️ Immutable vote records with hash verification
-- 📊 Live election results
-- 🔄 Election status management (Upcoming/Active/Ended)
+### 🔐 Multi-Factor Identity (MFI)
+* **Aadhaar Integration:** Secure 12-digit Digital ID validation to ensure "One Person, One Vote."
+* **Biometric Shield:** Integrated FaceID and Fingerprint toggles for hardware-level authentication.
+* **Dual-Channel OTP:** Server-side generated 6-digit codes for real-time mobile verification and password resets.
 
-## Setup
+### ⛓️ Blockchain Integrity
+* **Immutable Ledger:** Every cast vote is hashed and recorded on a tamper-proof blockchain.
+* **Auditability:** A "Blockchain Valid" engine that allows hosts to verify the sanctity of the entire election in real-time.
+* **AES-256 Defense:** Sensitive voter data is encrypted at rest using industry-standard AES-256 before being hashed.
 
-1. Install dependencies:
-```bash
-npm install
+### 📊 Intelligence & Management
+* **Dual-Role Portals:** Distinct, optimized dashboards for **Voters** (Participation) and **Hosts** (Administration).
+* **Live Analytics:** Real-time vote distribution heatmaps and countdown timers for active elections.
+* **Status Tracking:** Persistent monitoring of "Verified" vs. "Pending" voter statuses to maintain system health.
+
+---
+
+## 📸 System Walkthrough
+
+### 1. Onboarding & Authentication
+The platform uses a clean, role-based entry system. Our backend console tracks every authentication event (OTP) to prevent brute-force attacks.
+
+| Role Selection | Security Logs (OTP) |
+| :--- | :--- |
+| ![Role Selection](assets/Screenshot%202026-03-14%20063947.png) | ![Console Logs](assets/Screenshot%202026-03-14%20064326.png) |
+
+### 2. Multi-Stage Registration
+Identity is verified through a 4-step process: Identity -> OTP -> Face -> Biometric. This ensures 100% user accountability.
+
+![Registration Flow](assets/Screenshot%202026-03-14%20064042.png)
+*Registration interface showing Aadhaar validation and biometric security toggles.*
+
+### 3. Real-Time Dashboards
+Voters can browse live elections like the **General Election 2024**, while Hosts manage local polls like the **Panchayat Election 2026** with deep administrative tools.
+
+| Voter Dashboard | Host Management |
+| :--- | :--- |
+| ![Voter Dash](assets/WhatsApp%20Image%202026-03-14%20at%207.05.41%20AM.jpeg) | ![Host Dash](assets/WhatsApp%20Image%202026-03-14%20at%207.06.33%20AM.jpeg) |
+
+### 4. Verified Results
+Hosts have access to a live "Vote Distribution" panel that displays the winner while confirming that the **Blockchain is Valid** and encryption is active.
+
+![Election Results](assets/WhatsApp%20Image%202026-03-14%20at%207.06.58%20AM.jpeg)
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend (React / Next.js)
+* **UI/UX:** High-fidelity, accessible components with Tailwind CSS.
+* **State:** Real-time data fetching for live election countdowns.
+* **Hardware:** Integration with WebAuthn/Biometric APIs for secure login.
+
+### Backend & Security
+* **Encryption:** AES-256 CBC mode for sensitive data storage.
+* **Auth:** JWT-based sessions coupled with 6-digit OTP verification.
+* **Ledger:** Distributed hashing to ensure data immutability.
+
+---
+
+## 🚦 Quick Start
+
+### Prerequisites
+* Node.js v18+
+* NPM or Yarn
+
+### Installation
+1. **Clone the Repo**
+   ```bash
+   git clone [https://github.com/bhumika8393/e-votex.git](https://github.com/bhumika8393/e-votex.git)

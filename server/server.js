@@ -561,12 +561,35 @@ app.get('/api/host/results', (req, res) => {
 
 
 // Serve frontend
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+app.get('*', (req, res) => {
+    const filePath = path.join(__dirname, '../public/index.html');
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error('Error sending file:', err);
+            res.status(500).send(`
+                <h2>File not found</h2>
+                <p>Looking for: <code>${filePath}</code></p>
+                <p>Make sure index.html is in the <strong>public</strong> folder next to the <strong>server</strong> folder.</p>
+                <p>Your structure should be:<br>
+                <pre>votex/
+  public/
+    index.html
+    App.js
+  server/
+    server.js</pre></p>
+            `);
+        }
+    });
 });
 
 // Start server
 app.listen(PORT, () => {
     console.log(`\n🚀 Server running at http://localhost:${PORT}`);
+    console.log(`📁 Serving frontend from: ${path.join(__dirname, '../public')}`);
+    console.log(`🗄️  Database at: ${path.join(__dirname, 'voters.db')}`);
     console.log('📊 Check console for OTPs and blockchain hashes\n');
 });

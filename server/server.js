@@ -313,85 +313,99 @@ app.post('/api/election/status', (req, res) => {
 
 // Get candidates
 app.get('/api/candidates', (req, res) => {
-    db.all('SELECT * FROM candidates WHERE election_id = 1', (err, candidates) => {
-        if (err) {
-            return res.status(500).json({ error: 'Database error' });
-        }
-
-        res.json({ success: true, candidates });
+    const electionId = req.query.electionId ? parseInt(req.query.electionId) : 1;
+    db.all('SELECT * FROM candidates WHERE election_id = ?', [electionId], (err, candidates) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json({ success: true, candidates: candidates || [] });
     });
 });
 
 
+// ── AUTO STATUS from dates ────────────────────────────────────────────────────
+function autoUpdateElectionStatuses(cb) {
+    const now = new Date().toISOString();
+    // Set ended if end_time passed
+    db.run(`UPDATE elections SET status='ended' WHERE end_time IS NOT NULL AND end_time < ? AND status != 'ended'`, [now], () => {
+        // Set active if start_time passed and not yet ended
+        db.run(`UPDATE elections SET status='active' WHERE start_time IS NOT NULL AND start_time <= ? AND (end_time IS NULL OR end_time >= ?) AND status = 'upcoming'`, [now, now], () => {
+            if (cb) cb();
+        });
+    });
+}
+
 // Get all elections
 app.get('/api/elections', (req, res) => {
-    db.all('SELECT * FROM elections', (err, elections) => {
-        if (err) {
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json({ success: true, elections: elections || [] });
+    autoUpdateElectionStatuses(() => {
+        db.all('SELECT * FROM elections', (err, elections) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ success: true, elections: elections || [] });
+        });
     });
 });
 
 // ==================== VOTING ROUTES ====================
 
+// Ensure per-election votes table
+function ensureVotesTable(cb) {
+    db.run(`CREATE TABLE IF NOT EXISTS votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        election_id INTEGER NOT NULL,
+        candidate_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, election_id)
+    )`, cb);
+}
+
 // Cast vote
 app.post('/api/vote', (req, res) => {
     const { userId, candidateId } = req.body;
 
-    // Check if user has already voted
     db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
-        if (err) {
-            return res.status(500).json({ error: 'Database error' });
-        }
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        if (user.has_voted) {
-            return res.status(400).json({ error: 'You have already voted!' });
-        }
+        if (err) return res.status(500).json({ error: 'Database error' });
+        if (!user) return res.status(404).json({ error: 'User not found' });
 
-        // Check election status
-        db.get('SELECT * FROM elections WHERE id = 1', (err, election) => {
-            if (err || !election) {
-                return res.status(500).json({ error: 'Election not found' });
-            }
-            if (election.status !== 'active') {
-                return res.status(400).json({ error: 'Voting is not active' });
-            }
+        db.get('SELECT c.*, e.id as eid, e.start_time, e.end_time FROM candidates c JOIN elections e ON c.election_id = e.id WHERE c.id = ?', [candidateId], (err, row) => {
+            if (err || !row) return res.status(404).json({ error: 'Candidate not found' });
 
-            // Get candidate
-            db.get('SELECT * FROM candidates WHERE id = ?', [candidateId], (err, candidate) => {
-                if (err || !candidate) {
-                    return res.status(404).json({ error: 'Candidate not found' });
-                }
+            const electionId = row.eid;
+            const now = new Date();
+            const start = row.start_time ? new Date(row.start_time) : null;
+            const end   = row.end_time   ? new Date(row.end_time)   : null;
+            const isActive = (!start || now >= start) && (!end || now <= end);
+            if (!isActive) return res.status(400).json({ error: 'Voting is not active for this election' });
 
-                // Create vote data for blockchain
-                const voteData = {
-                    visibleVoterId: `VOTER-${user.id.toString().padStart(4, '0')}`,
-                    candidate: candidate.name,
-                    party: candidate.party,
-                    timestamp: new Date().toISOString(),
-                    electionId: 1
-                };
+            ensureVotesTable(() => {
+                db.get('SELECT id FROM votes WHERE user_id = ? AND election_id = ?', [userId, electionId], (err, existing) => {
+                    if (existing) return res.status(400).json({ error: 'You have already voted in this election!' });
 
-                // Add vote to blockchain
-                const block = voteChain.addVote(voteData);
+                    const voteData = {
+                        visibleVoterId: `VOTER-${user.id.toString().padStart(4, '0')}`,
+                        candidate: row.name,
+                        party: row.party,
+                        timestamp: new Date().toISOString(),
+                        electionId
+                    };
+                    const block = voteChain.addVote(voteData);
 
-                // Mark user as voted
-                db.run('UPDATE users SET has_voted = 1 WHERE id = ?', [userId], (err) => {
-                    if (err) {
-                        return res.status(500).json({ error: 'Failed to record vote' });
-                    }
-
-                    res.json({
-                        success: true,
-                        message: 'Vote recorded successfully!',
-                        blockHash: block.hash,
-                        candidate: candidate.name
+                    db.run('INSERT INTO votes (user_id, election_id, candidate_id) VALUES (?,?,?)', [userId, electionId, candidateId], (err) => {
+                        if (err) return res.status(500).json({ error: 'Failed to record vote' });
+                        res.json({ success: true, message: 'Vote recorded successfully!', blockHash: block.hash, candidate: row.name, electionId });
                     });
                 });
             });
+        });
+    });
+});
+
+// Get voted elections for a user
+app.get('/api/user/voted-elections', (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    ensureVotesTable(() => {
+        db.all('SELECT election_id FROM votes WHERE user_id = ?', [userId], (err, rows) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ success: true, electionIds: (rows||[]).map(r => r.election_id) });
         });
     });
 });
@@ -430,48 +444,119 @@ app.get('/api/blockchain', (req, res) => {
 
 // ==================== HOST ROUTES ====================
 
+// Ensure hosts table exists with email column
+function ensureHostsTable(cb) {
+    db.run(`CREATE TABLE IF NOT EXISTS hosts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        host_id TEXT UNIQUE NOT NULL,
+        name TEXT,
+        email TEXT,
+        password TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`, () => {
+        db.run('ALTER TABLE hosts ADD COLUMN email TEXT', () => {
+            if (cb) cb();
+        });
+    });
+}
+
+// Ensure elections table has host_id column
+function ensureElectionsHostCol(cb) {
+    db.run('ALTER TABLE elections ADD COLUMN host_id TEXT', () => { if(cb) cb(); });
+}
+
+// Host Signup
 app.post('/api/host/register', (req, res) => {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     const hostId = `HOST-${String(Math.floor(Math.random()*99999)).padStart(5,'0')}`;
-    const password = Math.random().toString(36).slice(2,10).toUpperCase();
-    const name = 'Host User';
-    db.run(`CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, host_id TEXT UNIQUE NOT NULL, name TEXT, password TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`, () => {
-        db.run('INSERT INTO hosts (host_id, name, password) VALUES (?,?,?)', [hostId, name, password], function(err) {
-            if (err) return res.status(500).json({ error: 'Failed to create host' });
-            console.log(`\n\x1b[33m HOST CREATED  ID: ${hostId}  Pass: ${password}\x1b[0m\n`);
-            res.json({ success: true, host: { id: this.lastID, hostId, name, password } });
+    ensureHostsTable(() => {
+        db.get('SELECT id FROM hosts WHERE email = ?', [email], (err, row) => {
+            if (row) return res.status(400).json({ error: 'Email already registered' });
+            db.run('INSERT INTO hosts (host_id, name, email, password) VALUES (?,?,?,?)', [hostId, name, email, password], function(err) {
+                if (err) return res.status(500).json({ error: 'Failed to create host' });
+                console.log(`\n\x1b[33m HOST CREATED  Name: ${name}  ID: ${hostId}\x1b[0m\n`);
+                res.json({ success: true, host: { id: this.lastID, hostId, name, email } });
+            });
         });
     });
 });
 
+// Host Login
 app.post('/api/host/login', (req, res) => {
     const { hostId, password } = req.body;
-    db.run(`CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, host_id TEXT UNIQUE NOT NULL, name TEXT, password TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`, () => {
+    if (!hostId || !password) return res.status(400).json({ error: 'Host ID and password are required' });
+    ensureHostsTable(() => {
         db.get('SELECT * FROM hosts WHERE host_id = ? AND password = ?', [hostId, password], (err, host) => {
             if (err) return res.status(500).json({ error: 'Database error' });
             if (!host) return res.status(401).json({ error: 'Invalid Host ID or password' });
-            res.json({ success: true, host: { id: host.id, hostId: host.host_id, name: host.name || 'Host' } });
+            res.json({ success: true, host: { id: host.id, hostId: host.host_id, name: host.name, email: host.email } });
         });
     });
 });
 
+// Create Election (tied to host)
 app.post('/api/host/create-election', (req, res) => {
-    const { electionName, electionType, description, startDate, endDate, candidates } = req.body;
+    const { electionName, electionType, description, startDate, endDate, candidates, hostId } = req.body;
     if (!electionName) return res.status(400).json({ error: 'Election name is required' });
     const start = startDate ? new Date(startDate).toISOString() : new Date().toISOString();
     const end   = endDate   ? new Date(endDate).toISOString()   : new Date(Date.now()+7*24*3600000).toISOString();
+    const autoStatus = new Date(start) <= new Date() ? 'active' : 'upcoming';
     db.run('ALTER TABLE elections ADD COLUMN description TEXT', ()=>{});
-    db.run('INSERT INTO elections (name, status, start_time, end_time, description) VALUES (?,?,?,?,?)',
-        [electionName, 'upcoming', start, end, description||''], function(err) {
-            if (err) return res.status(500).json({ error: 'Failed to create election: '+err.message });
-            const electionId = this.lastID;
-            console.log(`\n\x1b[32m ELECTION CREATED: ${electionName} (ID: ${electionId})\x1b[0m\n`);
-            if (candidates && candidates.length > 0) {
-                const stmt = db.prepare('INSERT INTO candidates (name, party, symbol, election_id) VALUES (?,?,?,?)');
-                candidates.forEach(c => stmt.run([c.name, c.party, c.symbol||'🗳️', electionId]));
-                stmt.finalize();
-            }
-            res.json({ success: true, electionId });
+    ensureElectionsHostCol(() => {
+        db.run('INSERT INTO elections (name, status, start_time, end_time, description, host_id) VALUES (?,?,?,?,?,?)',
+            [electionName, autoStatus, start, end, description||'', hostId||null], function(err) {
+                if (err) return res.status(500).json({ error: 'Failed to create election: '+err.message });
+                const electionId = this.lastID;
+                console.log(`\n\x1b[32m ELECTION CREATED: ${electionName} (ID: ${electionId}) by Host: ${hostId}\x1b[0m\n`);
+                if (candidates && candidates.length > 0) {
+                    const stmt = db.prepare('INSERT INTO candidates (name, party, symbol, election_id) VALUES (?,?,?,?)');
+                    candidates.forEach(c => stmt.run([c.name, c.party, c.symbol||'🗳️', electionId]));
+                    stmt.finalize();
+                }
+                res.json({ success: true, electionId });
+            });
+    });
+});
+
+// Get elections for a specific host only
+app.get('/api/host/elections', (req, res) => {
+    const { hostId } = req.query;
+    if (!hostId) return res.status(400).json({ error: 'hostId required' });
+    db.run('ALTER TABLE elections ADD COLUMN host_id TEXT', () => {
+        autoUpdateElectionStatuses(() => {
+            db.all('SELECT * FROM elections WHERE host_id = ?', [hostId], (err, elections) => {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                res.json({ success: true, elections: elections || [] });
+            });
         });
+    });
+});
+
+// Get results for a specific host's elections only
+app.get('/api/host/results', (req, res) => {
+    const { hostId } = req.query;
+    if (!hostId) return res.status(400).json({ error: 'hostId required' });
+    db.run('ALTER TABLE elections ADD COLUMN host_id TEXT', () => {
+        autoUpdateElectionStatuses(() => {
+            db.all('SELECT * FROM elections WHERE host_id = ?', [hostId], (err, elections) => {
+                if (err) return res.status(500).json({ error: 'Database error' });
+                const electionIds = (elections||[]).map(e => e.id);
+                if (electionIds.length === 0) {
+                    return res.json({ success: true, elections: [], candidates: [], results: {}, totalVotes: 0, chainValid: true, votes: [] });
+                }
+                const placeholders = electionIds.map(()=>'?').join(',');
+                db.all(`SELECT * FROM candidates WHERE election_id IN (${placeholders})`, electionIds, (err2, candidates) => {
+                    if (err2) return res.status(500).json({ error: 'Database error' });
+                    const counts = voteChain.getVoteCount();
+                    const allVotes = voteChain.getAllVotes();
+                    const isValid = voteChain.isChainValid();
+                    res.json({ success: true, elections: elections||[], candidates: candidates||[], results: counts, totalVotes: allVotes.length, chainValid: isValid, votes: allVotes });
+                });
+            });
+        });
+    });
 });
 
 

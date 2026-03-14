@@ -5,8 +5,8 @@ let state = {
     user: null, role: null, currentPage: 'role-select',
     signupData: {}, biometricEnabled: false,
     faceCaptured: false, fingerprintCaptured: false, faceStream: null,
-    elections: [], candidates: [], selectedElection: null, selectedCandidate: null, electionSearch: '',
-    hostUser: null, hostStep: 1,
+    elections: [], candidates: [], selectedElection: null, selectedCandidate: null, electionSearch: '', electionTab: 'live', votedElections: [],
+    hostUser: null, hostStep: 1, hostAuthTab: 'login',
     hostData: {
         electionName:'', electionType:'College', description:'',
         startDate:'', endDate:'', adminName:'', organization:'',
@@ -315,41 +315,67 @@ function renderForgotPage() {
     </div>`;
 }
 
+// ── EFFECTIVE STATUS (auto from dates, no manual override needed) ─────────────
+function getEffectiveStatus(e) {
+    const now = new Date();
+    const start = e.start_time ? new Date(e.start_time) : null;
+    const end   = e.end_time   ? new Date(e.end_time)   : null;
+    if (end && now > end)         return 'ended';
+    if (start && now >= start)    return 'active';
+    return 'upcoming';
+}
+
 // ── DUMMY ELECTIONS (shown alongside real DB elections) ───────────────────────
 const DUMMY_ELECTIONS = [
     // LIVE
-    { id:'d1', status:'active',   name:'Sir MVIT Student Council Election', description:'Vote for your student representatives for 2025–26 academic year.', domain:'🎓 College', end_time: new Date(Date.now()+2*24*3600000).toISOString() },
-    { id:'d2', status:'active',   name:'Bengaluru Ward 42 Civic Poll',      description:'Local civic body election for infrastructure & sanitation committee.', domain:'🏛️ Government', end_time: new Date(Date.now()+1*24*3600000+3*3600000).toISOString() },
-    { id:'d3', status:'active',   name:'TechCorp India Employee Choice Awards', description:'Vote for the best team, manager, and innovator of the year.', domain:'🏢 Corporate', end_time: new Date(Date.now()+3*3600000).toISOString() },
+    { id:'d1', status:'active',   name:'Sir MVIT Student Council Election', description:'Vote for your student representatives for 2025–26 academic year.', domain:'🎓 College', end_time: new Date(Date.now()+2*24*3600000).toISOString(),
+      candidates:[{name:'Arjun Mehta',party:'Progressive Students Front'},{name:'Sneha Rao',party:'United Campus Alliance'},{name:'Karan Nair',party:'Independent'}] },
+    { id:'d2', status:'active',   name:'Bengaluru Ward 42 Civic Poll', description:'Local civic body election for infrastructure & sanitation committee.', domain:'🏛️ Government', end_time: new Date(Date.now()+1*24*3600000+3*3600000).toISOString(),
+      candidates:[{name:'Ramesh Gowda',party:'Janata Dal (S)'},{name:'Fatima Sheikh',party:'Indian National Congress'},{name:'Suresh Babu',party:'BJP'},{name:'Preethi Nair',party:'Independent'}] },
+    { id:'d3', status:'active',   name:'TechCorp India Employee Choice Awards', description:'Vote for the best team, manager, and innovator of the year.', domain:'🏢 Corporate', end_time: new Date(Date.now()+3*3600000).toISOString(),
+      candidates:[{name:'Platform Engineering Team',party:'Engineering'},{name:'Customer Success Team',party:'Operations'},{name:'Data & AI Team',party:'R&D'}] },
     // UPCOMING
-    { id:'d4', status:'upcoming', name:'IIT Bombay Gymkhana Elections 2025', description:'Annual student gymkhana president and secretary elections.', domain:'🎓 College', end_time: new Date(Date.now()+5*24*3600000).toISOString() },
-    { id:'d5', status:'upcoming', name:'Koramangala RWA Board Election',     description:'Residents Welfare Association board member election.', domain:'🏘️ Community', end_time: new Date(Date.now()+7*24*3600000).toISOString() },
-    { id:'d6', status:'upcoming', name:'Karnataka Medical Council – President', description:'Elect the new president of Karnataka Medical Council 2025.', domain:'🏥 Healthcare', end_time: new Date(Date.now()+10*24*3600000).toISOString() },
-    { id:'d7', status:'upcoming', name:'Delhi Public School Head Boy/Girl',  description:'Annual school leadership election for DPS Dwarka.', domain:'🏫 School', end_time: new Date(Date.now()+4*24*3600000).toISOString() },
+    { id:'d4', status:'upcoming', name:'IIT Bombay Gymkhana Elections 2025', description:'Annual student gymkhana president and secretary elections.', domain:'🎓 College', end_time: new Date(Date.now()+5*24*3600000).toISOString(),
+      candidates:[{name:'Dhruv Sharma',party:'Students for Change'},{name:'Ananya Iyer',party:'Gymkhana First'},{name:'Rohan Verma',party:'Independent'}] },
+    { id:'d5', status:'upcoming', name:'Koramangala RWA Board Election', description:'Residents Welfare Association board member election.', domain:'🏘️ Community', end_time: new Date(Date.now()+7*24*3600000).toISOString(),
+      candidates:[{name:'Vijay Kumar',party:'Residents Welfare'},{name:'Meena Pillai',party:'Green Koramangala'},{name:'Arun Shetty',party:'Independent'}] },
+    { id:'d6', status:'upcoming', name:'Karnataka Medical Council – President', description:'Elect the new president of Karnataka Medical Council 2025.', domain:'🏥 Healthcare', end_time: new Date(Date.now()+10*24*3600000).toISOString(),
+      candidates:[{name:'Dr. Ravi Shankar',party:'KMC Progressive Panel'},{name:'Dr. Leela Nair',party:'Medical Reform Group'}] },
+    { id:'d7', status:'upcoming', name:'Delhi Public School Head Boy/Girl', description:'Annual school leadership election for DPS Dwarka.', domain:'🏫 School', end_time: new Date(Date.now()+4*24*3600000).toISOString(),
+      candidates:[{name:'Aditya Kapoor',party:'Class 12-A'},{name:'Priya Singh',party:'Class 12-B'},{name:'Rahul Gupta',party:'Class 12-C'}] },
     // ENDED
-    { id:'d8', status:'ended',    name:'Infosys CSR Grant Voting 2024',      description:'Employees voted on NGO partners for annual CSR grants.', domain:'🏢 Corporate', end_time: new Date(Date.now()-2*24*3600000).toISOString() },
-    { id:'d9', status:'ended',    name:'BITS Pilani Cultural Fest Head',     description:'Student voted for cultural fest organizing committee head.', domain:'🎓 College', end_time: new Date(Date.now()-5*24*3600000).toISOString() },
-    { id:'d10',status:'ended',    name:'Pune PMC Ward Budget Priority Poll', description:'Citizens voted on spending priorities for ward development budget.', domain:'🏛️ Government', end_time: new Date(Date.now()-8*24*3600000).toISOString() },
-    { id:'d11',status:'ended',    name:'Chennai Apartment Complex AGM Vote', description:'Annual general meeting resolution voting for Prestige Lakeside.', domain:'🏘️ Community', end_time: new Date(Date.now()-3*24*3600000).toISOString() },
+    { id:'d8', status:'ended',    name:'Infosys CSR Grant Voting 2024', description:'Employees voted on NGO partners for annual CSR grants.', domain:'🏢 Corporate', end_time: new Date(Date.now()-2*24*3600000).toISOString(),
+      candidates:[{name:'Teach For India',party:'Education NGO'},{name:'Goonj',party:'Relief NGO'},{name:'Pratham',party:'Literacy NGO'}] },
+    { id:'d9', status:'ended',    name:'BITS Pilani Cultural Fest Head', description:'Student voted for cultural fest organizing committee head.', domain:'🎓 College', end_time: new Date(Date.now()-5*24*3600000).toISOString(),
+      candidates:[{name:'Shruti Agarwal',party:'Arts Council'},{name:'Dev Patel',party:'Cultural Committee'},{name:'Nisha Joshi',party:'Independent'}] },
+    { id:'d10',status:'ended',    name:'Pune PMC Ward Budget Priority Poll', description:'Citizens voted on spending priorities for ward development budget.', domain:'🏛️ Government', end_time: new Date(Date.now()-8*24*3600000).toISOString(),
+      candidates:[{name:'Road & Infrastructure',party:'Development'},{name:'Parks & Sanitation',party:'Green Initiative'},{name:'Street Lighting',party:'Safety'}] },
+    { id:'d11',status:'ended',    name:'Chennai Apartment Complex AGM Vote', description:'Annual general meeting resolution voting for Prestige Lakeside.', domain:'🏘️ Community', end_time: new Date(Date.now()-3*24*3600000).toISOString(),
+      candidates:[{name:'Solar Panel Installation',party:'Proposal A'},{name:'CCTV Upgrade',party:'Proposal B'},{name:'Gym Renovation',party:'Proposal C'}] },
 ];
 
 // ── VOTER DASHBOARD ───────────────────────────────────────────────────────────
 function renderVoterDashboard() {
     const query = (state.electionSearch||'').toLowerCase().trim();
+    const activeTab = state.electionTab || 'live';
     const allElections = [
-        ...state.elections.map(e=>({...e, id:String(e.id), domain:'🗳️ General'})),
+        ...state.elections.map(e=>({...e, id:String(e.id), domain:'\u{1F5F3}\uFE0F General', status:getEffectiveStatus(e)})),
         ...DUMMY_ELECTIONS
     ];
     const filtered = query
         ? allElections.filter(e=>e.name.toLowerCase().includes(query)||e.description?.toLowerCase().includes(query)||(e.domain||'').toLowerCase().includes(query))
         : allElections;
-    const active   = filtered.filter(e=>e.status==='active');
+    const live     = filtered.filter(e=>e.status==='active');
     const upcoming = filtered.filter(e=>e.status==='upcoming');
     const ended    = filtered.filter(e=>e.status==='ended');
     const voterId  = `VX-${String(state.user?.id||0).padStart(5,'0')}-00`;
-
-    const electionCard = (e, showClick=false) => `
-        <div class="election-item ${showClick?'ec-click':''}" ${showClick?`data-eid="${e.id}"`:''}> 
+    const tabList  = [
+        {key:'live',label:'Live',count:live.length},
+        {key:'upcoming',label:'Upcoming',count:upcoming.length},
+        {key:'ended',label:'Ended',count:ended.length}
+    ];
+    const electionCard=(e,showClick=false)=>`
+        <div class="election-item ${showClick?'ec-click':''}" ${showClick?`data-eid="${e.id}"`:''}>
             <div class="election-item-top">
                 ${e.status==='active'?'<span class="live-badge">LIVE</span>':e.status==='upcoming'?'<span class="upcoming-badge">UPCOMING</span>':'<span class="ended-badge">ENDED</span>'}
                 <span class="election-time">${e.end_time?timeRemaining(e.end_time):(e.status==='ended'?'Ended':'Active')}</span>
@@ -357,18 +383,39 @@ function renderVoterDashboard() {
             <div class="election-name">${e.name}</div>
             <div class="election-desc">${e.description||'Click to view candidates and cast your vote'}</div>
             <div class="election-footer">
-                <span style="font-size:0.72rem;font-weight:600;color:#6b7280;letter-spacing:0.04em">${e.domain||''}</span>
+                <span style="font-size:0.72rem;font-weight:600;color:#6b7280">${e.domain||''}</span>
                 ${showClick?`<button class="btn-outline view-cand-btn" data-eid="${e.id}">View Candidates</button>`:''}
             </div>
         </div>`;
-
+    const simpleCard=(e)=>`
+        <div class="simple-election-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                ${e.status==='upcoming'?'<span class="upcoming-badge">UPCOMING</span>':'<span class="ended-badge">ENDED</span>'}
+                <span style="font-size:0.7rem;color:#6b7280">${e.domain||''}</span>
+            </div>
+            <div class="simple-election-name">${e.name}</div>
+            <div class="simple-election-desc">${e.description||''}</div>
+            <div style="font-size:0.72rem;color:#9ca3af;margin-top:4px">${e.status==='upcoming'?(e.end_time?'Opens '+new Date(e.end_time).toLocaleDateString():''):(e.end_time?'Ended '+new Date(e.end_time).toLocaleDateString():'')}</div>
+        </div>`;
+    let tabContent='';
+    if(activeTab==='live'){
+        tabContent=live.length===0?`<div class="col-empty-msg" style="padding:32px;text-align:center">${query?'No matches':'No live elections right now'}</div>`:`<div class="election-list">${live.map(e=>electionCard(e,true)).join('')}</div>`;
+    } else if(activeTab==='upcoming'){
+        tabContent=upcoming.length===0?`<div class="col-empty-msg" style="padding:32px;text-align:center">${query?'No matches':'No upcoming elections'}</div>`:`<div class="election-list">${upcoming.map(e=>simpleCard(e)).join('')}</div>`;
+    } else {
+        tabContent=ended.length===0?`<div class="col-empty-msg" style="padding:32px;text-align:center">${query?'No matches':'No ended elections'}</div>`:`<div class="election-list">${ended.map(e=>simpleCard(e)).join('')}</div>`;
+    }
     return `
     <div class="page">
-        <div class="dash-topbar">
-            <div class="dash-brand">SARVAMAT // DASHBOARD<span>Welcome, ${state.user?.name||''}</span></div>
-            <div style="display:flex;align-items:center;gap:12px">
-                <button class="logout-link" id="logoutBtn">Logout</button>
-                <div class="dash-fp-btn">🪪</div>
+        <div style="position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 6px rgba(0,0,0,0.06)">
+            <div class="dash-topbar" style="border-bottom:none">
+                <div class="dash-brand">SARVAMAT // DASHBOARD<span>Welcome, ${state.user?.name||''}</span></div>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <button class="logout-link" id="logoutBtn">Logout</button>
+                </div>
+            </div>
+            <div style="display:flex;padding:0 20px;gap:4px;background:#fff">
+                ${tabList.map(t=>`<button class="dash-tab-btn" data-tab="${t.key}" style="padding:10px 18px;border:none;background:none;font-size:0.82rem;font-weight:700;cursor:pointer;border-bottom:2px solid ${activeTab===t.key?'#00b896':'transparent'};color:${activeTab===t.key?'#00b896':'#6b7280'};letter-spacing:0.04em">${t.label} <span style="background:${activeTab===t.key?'#00b896':'#e5e7eb'};color:${activeTab===t.key?'#fff':'#6b7280'};border-radius:999px;padding:1px 7px;font-size:0.72rem;margin-left:4px">${t.count}</span></button>`).join('')}
             </div>
         </div>
         <div class="dash-body">
@@ -376,73 +423,19 @@ function renderVoterDashboard() {
                 <div class="voter-card-grid">
                     <div><div class="voter-stat-label">Voter ID</div><div class="voter-stat-val">${voterId}</div></div>
                     <div><div class="voter-stat-label">Status</div><div class="voter-stat-val verified">VERIFIED</div></div>
-                    <div><div class="voter-stat-label">Votes Cast</div><div class="voter-stat-val">${state.user?.has_voted?1:0}</div></div>
+                    <div><div class="voter-stat-label">Votes Cast</div><div class="voter-stat-val">${state.votedElections?.length||0}</div></div>
                 </div>
             </div>
-
-            <!-- SEARCH BAR -->
-            <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
                 <div style="position:relative;flex:1">
-                    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none" width="16" height="16" viewBox="0 0 20 20" fill="none">
-                        <circle cx="9" cy="9" r="6" stroke="#9ca3af" stroke-width="1.5"/>
-                        <path d="M13.5 13.5L17 17" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                    <input id="electionSearchInput" type="text" value="${state.electionSearch||''}"
-                        placeholder="Search elections by name, domain, keyword..."
-                        style="width:100%;box-sizing:border-box;padding:10px 12px 10px 36px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:0.88rem;outline:none;background:#fafafa;color:#111">
+                    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none" width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#9ca3af" stroke-width="1.5"/><path d="M13.5 13.5L17 17" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input id="electionSearchInput" type="text" value="${state.electionSearch||''}" placeholder="Search by name, domain, keyword..." style="width:100%;box-sizing:border-box;padding:10px 12px 10px 36px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:0.88rem;outline:none;background:#fafafa;color:#111">
                 </div>
-                <button id="electionSearchBtn" style="padding:10px 18px;background:#111;color:#fff;border:none;border-radius:10px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap">🔍 Search</button>
-                ${query?`<button id="electionClearBtn" style="padding:10px 14px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer">✕ Clear</button>`:''}
+                <button id="electionSearchBtn" style="padding:10px 18px;background:#111;color:#fff;border:none;border-radius:10px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap">\u{1F50D} Search</button>
+                ${query?`<button id="electionClearBtn" style="padding:10px 14px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer">\u2715 Clear</button>`:''}
             </div>
-            ${query?`<div style="font-size:0.8rem;color:#6b7280;margin-bottom:12px">${filtered.length} result${filtered.length!==1?'s':''} for "<strong>${query}</strong>"</div>`:''}
-
-            ${active.length>0?`
-            <div class="dash-section-label"><span>🟢 LIVE ELECTIONS</span><span class="dash-section-count">${active.length} AVAILABLE</span></div>
-            <div class="election-list">${active.map(e=>electionCard(e, !String(e.id).startsWith('d'))).join('')}</div>`
-            :(query?'':'')
-            }
-
-            <div class="elections-2col">
-                <div class="col-section">
-                    <div class="dash-section-label"><span>📅 UPCOMING</span><span class="dash-section-count">${upcoming.length}</span></div>
-                    ${upcoming.length===0
-                        ?`<div class="col-empty-msg">${query?'No matches':'No upcoming elections'}</div>`
-                        :upcoming.map(e=>`
-                        <div class="simple-election-card">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                                <span class="upcoming-badge">UPCOMING</span>
-                                <span style="font-size:0.7rem;color:#6b7280">${e.domain||''}</span>
-                            </div>
-                            <div class="simple-election-name">${e.name}</div>
-                            <div class="simple-election-desc">${e.description||'Voting not yet open'}</div>
-                            <div style="font-size:0.72rem;color:#9ca3af;margin-top:4px">${e.end_time?'Opens '+new Date(e.end_time).toLocaleDateString():''}</div>
-                        </div>`).join('')}
-                </div>
-                <div class="col-section">
-                    <div class="dash-section-label"><span>🏁 ENDED</span><span class="dash-section-count">${ended.length}</span></div>
-                    ${ended.length===0
-                        ?`<div class="col-empty-msg">${query?'No matches':'No ended elections'}</div>`
-                        :ended.map(e=>`
-                        <div class="simple-election-card">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                                <span class="ended-badge">ENDED</span>
-                                <span style="font-size:0.7rem;color:#6b7280">${e.domain||''}</span>
-                            </div>
-                            <div class="simple-election-name">${e.name}</div>
-                            <div class="simple-election-desc">${e.description||'Voting has closed'}</div>
-                            <div style="font-size:0.72rem;color:#9ca3af;margin-top:4px">${e.end_time?'Ended '+new Date(e.end_time).toLocaleDateString():''}</div>
-                        </div>`).join('')}
-                </div>
-            </div>
-
-            <div class="admin-strip">
-                <div class="admin-strip-label">Admin Controls (Demo)</div>
-                <div class="admin-strip-btns">
-                    <button class="admin-tag upcoming" data-status="upcoming">Set Upcoming</button>
-                    <button class="admin-tag active" data-status="active">Set Active</button>
-                    <button class="admin-tag ended" data-status="ended">Set Ended</button>
-                </div>
-            </div>
+            ${query?`<div style="font-size:0.8rem;color:#6b7280;margin-bottom:14px">${filtered.length} result${filtered.length!==1?'s':''} for "<strong>${state.electionSearch}</strong>"</div>`:''}
+            ${tabContent}
         </div>
     </div>`;
 }
@@ -460,7 +453,7 @@ function renderElectionDetail() {
         <div class="dash-topbar"><div class="dash-brand">SARVAMAT // VOTING<span>${e.name}</span></div>
         <button class="btn-outline" id="backToDash">← Back</button></div>
         <div class="dash-body">
-            ${state.user?.has_voted?`
+            ${state.votedElections?.map(Number).includes(Number(state.selectedElection?.id))?`
             <div class="voted-banner"><div class="voted-check">✅</div><div class="voted-title">Vote Cast Successfully!</div>
             <div class="voted-sub">Your vote is securely recorded on the blockchain.<br><span style="color:#00b896;font-weight:600">Block hash logged in server console.</span></div></div>`
             :`<div class="candidate-section">
@@ -480,20 +473,13 @@ function renderElectionDetail() {
                     <span>CAST ENCRYPTED VOTE</span>
                 </div>
             </div>`}
-            <div class="admin-strip">
-                <div class="admin-strip-label">Admin Controls (Demo)</div>
-                <div class="admin-strip-btns">
-                    <button class="admin-tag upcoming" data-status="upcoming">Set Upcoming</button>
-                    <button class="admin-tag active" data-status="active">Set Active</button>
-                    <button class="admin-tag ended" data-status="ended">Set Ended</button>
-                </div>
-            </div>
         </div>
     </div>`;
 }
 
-// ── HOST LOGIN ─────────────────────────────────────────────────────────────────
+// ── HOST LOGIN / SIGNUP ────────────────────────────────────────────────────────
 function renderHostLogin() {
+    const tab = state.hostAuthTab || 'login';
     return `
     <div class="reg-page">
         <div class="reg-topbar">
@@ -501,8 +487,16 @@ function renderHostLogin() {
             <button class="btn-back-role" id="backToRole">← Roles</button>
         </div>
         <div class="reg-body" style="max-width:600px">
-            <div class="reg-title">Host Login</div>
-            <div class="reg-sub">Sign in to create and manage elections</div>
+            <div class="reg-title">${tab==='login'?'Host Login':'Create Host Account'}</div>
+            <div class="reg-sub">${tab==='login'?'Sign in using your Host ID and password':'Register to get your unique Host ID'}</div>
+
+            <!-- TABS -->
+            <div style="display:flex;border:1.5px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:24px">
+                <button id="tabLogin" style="flex:1;padding:10px;font-weight:700;font-size:0.85rem;border:none;cursor:pointer;background:${tab==='login'?'#111':'#fff'};color:${tab==='login'?'#fff':'#6b7280'}">LOGIN</button>
+                <button id="tabSignup" style="flex:1;padding:10px;font-weight:700;font-size:0.85rem;border:none;cursor:pointer;background:${tab==='signup'?'#111':'#fff'};color:${tab==='signup'?'#fff':'#6b7280'}">SIGN UP</button>
+            </div>
+
+            ${tab==='login'?`
             <form id="hostLoginForm" class="reg-form-card">
                 <div class="rf-group"><label class="rf-label">Host ID</label>
                     <div class="rf-input-wrap"><svg class="rf-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="2" stroke="#9ca3af" stroke-width="1.5"/></svg>
@@ -514,21 +508,35 @@ function renderHostLogin() {
                 </div>
             </form>
             <div style="height:20px"></div>
-            <button type="submit" form="hostLoginForm" class="rf-cta-btn">Login as Host →</button>
-            <div style="text-align:center;margin-top:14px">
-                <span style="font-size:0.82rem;color:#6b7280">New host? </span>
-                <span id="goHostRegister" style="font-size:0.82rem;font-weight:700;cursor:pointer;color:#111">Create Host Account →</span>
-            </div>
-            <div class="rf-cta-note" style="margin-top:10px">🔒 End-to-end encrypted</div>
+            <button type="submit" form="hostLoginForm" class="rf-cta-btn">Login as Host →</button>`
+            :`
+            <form id="hostSignupForm" class="reg-form-card">
+                <div class="rf-group"><label class="rf-label">Full Name</label>
+                    <div class="rf-input-wrap"><svg class="rf-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="#9ca3af" stroke-width="1.5"/><path d="M3 17c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input type="text" id="hostName" class="rf-input" placeholder="Your full name" required></div>
+                </div>
+                <div class="rf-group"><label class="rf-label">Email Address</label>
+                    <div class="rf-input-wrap"><svg class="rf-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="2" stroke="#9ca3af" stroke-width="1.5"/><path d="M3 5l7 6 7-6" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input type="email" id="hostEmail" class="rf-input" placeholder="you@example.com" required></div>
+                </div>
+                <div class="rf-group" style="margin-bottom:0"><label class="rf-label">Password</label>
+                    <div class="rf-input-wrap"><svg class="rf-icon" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="8" rx="2" stroke="#9ca3af" stroke-width="1.5"/><path d="M7 9V6a3 3 0 016 0v3" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input type="password" id="hostSignupPassword" class="rf-input" placeholder="Min 6 characters" required></div>
+                </div>
+            </form>
+            <div style="height:20px"></div>
+            <button type="submit" form="hostSignupForm" class="rf-cta-btn">Create Host Account →</button>`}
+
+            <div class="rf-cta-note" style="margin-top:14px">🔒 Your Host ID will be shown after signup — save it!</div>
         </div>
     </div>`;
 }
 
 // ── HOST FLOW (9 steps) ────────────────────────────────────────────────────────
-const HOST_STEPS=['Election Details','Organizer Info','Add Voters','Add Candidates','Ballot Config','Security','Results','Notifications','Review'];
+const HOST_STEPS=['Election Details','Organizer Info','Add Candidates','Ballot Config','Security','Results','Notifications','Review'];
 
 function renderHostFlow() {
-    const fns=[renderHostStep1,renderHostStep2,renderHostStep3,renderHostStep4,renderHostStep5,renderHostStep6,renderHostStep7,renderHostStep8,renderHostStep9];
+    const fns=[renderHostStep1,renderHostStep2,renderHostStep4,renderHostStep5,renderHostStep6,renderHostStep7,renderHostStep8,renderHostStep9];
     const pct=((state.hostStep-1)/(HOST_STEPS.length-1))*100;
     return `
     <div class="host-page">
@@ -613,7 +621,6 @@ function renderHostStep5() {
         <div class="hs-title">BALLOT CONFIGURATION</div><div class="hs-sub">Configure voting rules and ballot settings</div>
         <div class="hs-info-card"><div class="hs-ic-icon" style="background:#f0fdfb">📋</div><div><div class="hs-ic-label">Candidates on Ballot</div><div class="hs-ic-val">${d.candidates.length} candidates</div></div></div>
         <div class="hs-info-card"><div class="hs-ic-icon" style="background:#f0fdfb">⚖️</div><div><div class="hs-ic-label">Voting Rule</div><div class="hs-ic-val">One vote per voter</div></div></div>
-        <div class="hs-info-card"><div class="hs-ic-icon" style="background:#f9fafb">👤</div><div><div class="hs-ic-label">Eligible Voters</div><div class="hs-ic-val">${d.voters.length} voters</div></div></div>
     </div>${hostNavBtns()}`;
 }
 
@@ -698,8 +705,11 @@ function renderHostDashboard() {
             <div class="voter-card" style="margin-bottom:24px">
                 <div class="voter-card-grid">
                     <div><div class="voter-stat-label">Host ID</div><div class="voter-stat-val">${state.hostUser?.hostId||'N/A'}</div></div>
-                    <div><div class="voter-stat-label">Role</div><div class="voter-stat-val verified">HOST</div></div>
+                    <div><div class="voter-stat-label">Name</div><div class="voter-stat-val">${state.hostUser?.name||'Host'}</div></div>
                     <div><div class="voter-stat-label">Elections</div><div class="voter-stat-val">${state.elections.length}</div></div>
+                </div>
+                <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f3f4f6;font-size:0.75rem;color:#6b7280">
+                    🔑 Save your Host ID: <strong style="color:#111;user-select:all">${state.hostUser?.hostId}</strong> — you'll need it to login next time
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px">
@@ -709,19 +719,20 @@ function renderHostDashboard() {
             <div class="dash-section-label"><span>ALL ELECTIONS</span></div>
             <div class="election-list">
                 ${state.elections.length===0?'<div class="col-empty-msg" style="padding:20px">No elections yet. Create one above.</div>'
-                :state.elections.map(e=>`
+                :state.elections.map(e=>{
+                    const eff=getEffectiveStatus(e);
+                    return `
                 <div class="election-item">
-                    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-                        <button class="admin-tag" data-set-status="${e.id}" data-new-status="upcoming" style="background:#fefce8;color:#92400e;border:1px solid #fde68a">Set Upcoming</button>
-                        <button class="admin-tag active" data-set-status="${e.id}" data-new-status="active">Set Active</button>
-                        <button class="admin-tag ended" data-set-status="${e.id}" data-new-status="ended">Set Ended</button>
-                    </div>
                     <div class="election-item-top">
-                        ${e.status==='active'?'<span class="live-badge">LIVE</span>':e.status==='upcoming'?'<span class="upcoming-badge">UPCOMING</span>':'<span class="ended-badge">ENDED</span>'}
+                        ${eff==='active'?'<span class="live-badge">LIVE</span>':eff==='upcoming'?'<span class="upcoming-badge">UPCOMING</span>':'<span class="ended-badge">ENDED</span>'}
                         <span class="election-time">${e.end_time?timeRemaining(e.end_time):''}</span>
                     </div>
                     <div class="election-name">${e.name}</div>
-                </div>`).join('')}
+                    <div style="font-size:0.75rem;color:#6b7280;margin-top:4px">
+                        ${e.start_time?'Starts: '+new Date(e.start_time).toLocaleString():''} 
+                        ${e.end_time?'&nbsp;→&nbsp; Ends: '+new Date(e.end_time).toLocaleString():''}
+                    </div>
+                </div>`}).join('')}
             </div>
         </div>
     </div>`;
@@ -756,7 +767,12 @@ function buildResultsHTML(results, candidates) {
             const barW=total>0?((c.votes/maxVotes)*100):0;
             return `<div class="results-bar-row">
                 <div class="results-bar-meta">
-                    <div class="results-bar-left"><span class="results-bar-rank">#${i+1}</span><span class="results-bar-symbol">${c.symbol}</span><span class="results-bar-name">${c.name}</span><span class="results-bar-party">${c.party}</span></div>
+                    <div class="results-bar-left">
+                        <span class="results-bar-rank">#${i+1}</span>
+                        ${i===0&&total>0?`<span style="font-size:1.1rem">🏆</span>`:''}
+                        <span class="results-bar-name">${c.name}</span>
+                        <span class="results-bar-party">${c.party}</span>
+                    </div>
                     <div class="results-bar-right"><span class="results-bar-votes">${c.votes} votes</span><span class="results-bar-pct">${pct}%</span></div>
                 </div>
                 <div class="results-bar-track"><div class="results-bar-fill ${i===0?'winner':''}" style="width:${barW}%"></div></div>
@@ -821,6 +837,9 @@ function attachListeners() {
     document.getElementById('resetOtp')?.addEventListener('input',e=>{const btn=document.getElementById('resetBtn');if(btn&&document.getElementById('newPasswordGroup')?.classList.contains('hidden'))btn.disabled=e.target.value.length!==6;});
     document.getElementById('resetForm')?.addEventListener('submit',handleResetPassword);
 
+    // Election tabs
+    document.querySelectorAll('.dash-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{state.electionTab=btn.dataset.tab;render();}));
+
     // Election search
     document.getElementById('electionSearchBtn')?.addEventListener('click',()=>{state.electionSearch=document.getElementById('electionSearchInput')?.value||'';render();});
     document.getElementById('electionSearchInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){state.electionSearch=e.target.value;render();}});
@@ -830,11 +849,21 @@ function attachListeners() {
     document.getElementById('logoutBtn')?.addEventListener('click',handleLogout);
     document.querySelectorAll('.ec-click,.view-cand-btn').forEach(el=>{
         el.addEventListener('click',async(ev)=>{ev.stopPropagation();
-            const eid=parseInt(el.dataset.eid);
-            state.selectedElection=state.elections.find(e=>e.id===eid);
-            state.selectedCandidate=null;
-            await loadCandidates(eid);
-            state.currentPage='election-detail';render();
+            const eid = el.dataset.eid;
+            const isDummy = String(eid).startsWith('d');
+            if(isDummy) {
+                state.selectedElection = DUMMY_ELECTIONS.find(e=>e.id===eid);
+                state.selectedCandidate = null;
+                // Use candidates defined directly on the dummy election, give them fake ids
+                state.candidates = (state.selectedElection?.candidates||[]).map((c,i)=>({...c, id:i+1, symbol:''}));
+                state.currentPage='election-detail'; render();
+            } else {
+                const numId = parseInt(eid);
+                state.selectedElection = state.elections.find(e=>e.id===numId||String(e.id)===String(eid));
+                state.selectedCandidate = null;
+                await loadCandidates(numId);
+                state.currentPage='election-detail'; render();
+            }
         });
     });
     document.querySelectorAll('.candidate-row').forEach(row=>{
@@ -845,21 +874,17 @@ function attachListeners() {
     document.getElementById('backToDash')?.addEventListener('click',()=>{state.currentPage='voter-dashboard';state.selectedElection=null;state.selectedCandidate=null;render();});
     document.querySelectorAll('.admin-tag[data-status]').forEach(btn=>btn.addEventListener('click',()=>handleStatusChange(btn.dataset.status)));
 
-    // Host login
+    // Host login / signup tabs
+    document.getElementById('tabLogin')?.addEventListener('click',()=>{state.hostAuthTab='login';render();});
+    document.getElementById('tabSignup')?.addEventListener('click',()=>{state.hostAuthTab='signup';render();});
     document.getElementById('hostLoginForm')?.addEventListener('submit',handleHostLogin);
-    document.getElementById('goHostRegister')?.addEventListener('click',handleHostRegister);
+    document.getElementById('hostSignupForm')?.addEventListener('submit',handleHostSignup);
 
     // Host flow
     document.getElementById('hostNavBack')?.addEventListener('click',()=>{if(state.hostStep>1){state.hostStep--;render();}else{state.currentPage='host-dashboard';render();}});
     document.querySelectorAll('.host-tab').forEach(tab=>tab.addEventListener('click',()=>{state.hostStep=parseInt(tab.dataset.hstep);render();}));
     document.getElementById('hostNext')?.addEventListener('click',handleHostNext);
     document.getElementById('hostPrev')?.addEventListener('click',()=>{state.hostStep--;render();});
-    document.getElementById('addVoterBtn')?.addEventListener('click',()=>{
-        const name=document.getElementById('h_voterName')?.value?.trim(),phone=document.getElementById('h_voterPhone')?.value?.trim();
-        if(!name||!phone){showToast('Enter voter name and phone','error');return;}
-        state.hostData.voters.push({name,phone,id:Date.now()});render();
-    });
-    document.querySelectorAll('[data-remove-voter]').forEach(btn=>btn.addEventListener('click',()=>{state.hostData.voters.splice(parseInt(btn.dataset.removeVoter),1);render();}));
     document.getElementById('addCandBtn')?.addEventListener('click',()=>{
         const name=document.getElementById('h_candName')?.value?.trim(),party=document.getElementById('h_candParty')?.value?.trim(),symbol=document.getElementById('h_candSymbol')?.value?.trim()||'🗳️';
         if(!name||!party){showToast('Enter candidate name and party','error');return;}
@@ -874,7 +899,10 @@ function attachListeners() {
     document.getElementById('createElectionBtn')?.addEventListener('click',()=>{state.hostStep=1;state.hostData={electionName:'',electionType:'College',description:'',startDate:'',endDate:'',adminName:'',organization:'',adminEmail:'',adminPhone:'',voters:[],candidates:[],votingRule:'one-per-voter',authMethod:'OTP',biometric:false,resultVisibility:'after-end',notifications:true};state.currentPage='host-flow';render();});
     document.getElementById('viewResultsBtn')?.addEventListener('click',async()=>{
         state.currentPage='host-results';render();
-        try{const[r,c]=await Promise.all([apiCall('/api/results'),apiCall('/api/candidates')]);document.getElementById('resultsContent').innerHTML=buildResultsHTML(r,c.candidates||[]);}
+        try{
+            const r = await apiCall(`/api/host/results?hostId=${state.hostUser?.hostId}`);
+            document.getElementById('resultsContent').innerHTML=buildResultsHTML(r, r.candidates||[]);
+        }
         catch{document.getElementById('resultsContent').innerHTML='<div style="padding:20px;color:#ef4444">Failed to load results</div>';}
     });
     document.getElementById('backToHostDash')?.addEventListener('click',()=>{state.currentPage='host-dashboard';render();});
@@ -884,19 +912,32 @@ function attachListeners() {
 }
 
 // ── HANDLERS ───────────────────────────────────────────────────────────────────
-async function handleLogin(e){e.preventDefault();try{const r=await apiCall('/api/login','POST',{phone:document.getElementById('loginPhone').value,password:document.getElementById('loginPassword').value});state.user=r.user;await loadAllElections();state.currentPage='voter-dashboard';showToast('Login successful!','success');render();}catch{}}
+async function handleLogin(e){e.preventDefault();try{const r=await apiCall('/api/login','POST',{phone:document.getElementById('loginPhone').value,password:document.getElementById('loginPassword').value});state.user=r.user;await loadAllElections();try{const v=await apiCall(`/api/user/voted-elections?userId=${r.user.id}`);state.votedElections=v.electionIds||[];}catch{state.votedElections=[];}state.currentPage='voter-dashboard';showToast('Login successful!','success');render();}catch{}}
 function handleRegStep1(e){e.preventDefault();const name=document.getElementById('regName').value,aadhar=document.getElementById('regAadhar').value,dob=document.getElementById('regDob').value,password=document.getElementById('regPassword').value,phone=document.getElementById('regPhone').value;if(phone.length!==10){showToast('Phone must be 10 digits','error');return;}if(aadhar.length!==12){showToast('Aadhar must be 12 digits','error');return;}if(!dob){showToast('Please enter date of birth','error');return;}state.signupData={name,aadhar,dob,password,phone};state.currentPage='register-step2-otp';render();}
 async function handleSendOtp(purpose){const phone=purpose==='signup'?state.signupData.phone:document.getElementById('resetPhone')?.value;if(!phone||phone.length!==10){showToast('Invalid phone number','error');return;}try{await apiCall('/api/send-otp','POST',{phone,purpose});showToast('OTP sent! Check server console.','success');}catch{}}
 async function handleVerifyOtp(){const otp=document.getElementById('signupOtp').value,phone=state.signupData.phone;try{await apiCall('/api/verify-otp','POST',{phone,otp,purpose:'signup'});const r=await apiCall('/api/signup','POST',{name:state.signupData.name,dob:state.signupData.dob,phone,aadhar:state.signupData.aadhar,password:state.signupData.password});state.user=r.user;showToast('Account created!','success');state.currentPage='register-step3-face';state.faceCaptured=false;state.fingerprintCaptured=false;render();}catch{}}
 async function handleResetPassword(e){e.preventDefault();const phone=document.getElementById('resetPhone').value,otp=document.getElementById('resetOtp').value,newPassword=document.getElementById('newPassword')?.value;if(!otp){showToast('Enter OTP','error');return;}try{await apiCall('/api/verify-otp','POST',{phone,otp,purpose:'reset'});const npg=document.getElementById('newPasswordGroup'),btn=document.getElementById('resetBtn');if(npg.classList.contains('hidden')){npg.classList.remove('hidden');btn.disabled=false;btn.textContent='Set New Password →';showToast('OTP verified!','success');return;}if(!newPassword){showToast('Enter new password','error');return;}await apiCall('/api/reset-password','POST',{phone,newPassword});showToast('Password reset!','success');state.currentPage='login';render();}catch{}}
-function handleLogout(){stopCamera();state.user=null;state.hostUser=null;state.selectedCandidate=null;state.selectedElection=null;state.currentPage='role-select';state.faceCaptured=false;state.fingerprintCaptured=false;showToast('Logged out','success');render();}
-async function handleVote(){if(!state.selectedCandidate){showToast('Select a candidate first','error');return;}try{const r=await apiCall('/api/vote','POST',{userId:state.user.id,candidateId:state.selectedCandidate.id});state.user.has_voted=1;console.log(`\x1b[32m Block Hash: ${r.blockHash}\x1b[0m`);showToast(`Vote cast for ${r.candidate}! ✅`,'success');render();}catch{}}
+function handleLogout(){stopCamera();state.user=null;state.hostUser=null;state.selectedCandidate=null;state.selectedElection=null;state.votedElections=[];state.currentPage='role-select';state.faceCaptured=false;state.fingerprintCaptured=false;showToast('Logged out','success');render();}
+async function handleVote(){if(!state.selectedCandidate){showToast('Select a candidate first','error');return;}try{const r=await apiCall('/api/vote','POST',{userId:state.user.id,candidateId:state.selectedCandidate.id});if(!state.votedElections)state.votedElections=[];state.votedElections.push(r.electionId);console.log(`\x1b[32m Block Hash: ${r.blockHash}\x1b[0m`);showToast(`Vote cast for ${r.candidate}! ✅`,'success');render();}catch{}}
 async function handleStatusChange(status){try{await apiCall('/api/election/status','POST',{status});await loadAllElections();if(state.selectedElection)state.selectedElection=state.elections.find(e=>e.id===state.selectedElection.id)||null;showToast(`Election → ${status}`,'success');render();}catch{}}
-async function handleHostLogin(e){e.preventDefault();const hostId=document.getElementById('hostId').value,password=document.getElementById('hostPassword').value;try{const r=await apiCall('/api/host/login','POST',{hostId,password});state.hostUser=r.host;await loadAllElections();state.currentPage='host-dashboard';showToast('Host login successful!','success');render();}catch{}}
-async function handleHostRegister(){try{const r=await apiCall('/api/host/register','POST',{});state.hostUser=r.host;showToast(`Host created! ID: ${r.host.hostId} | Pass: ${r.host.password}`,'success');await loadAllElections();state.currentPage='host-dashboard';render();}catch{}}
+async function handleHostLogin(e){e.preventDefault();const hostId=document.getElementById('hostId').value,password=document.getElementById('hostPassword').value;try{const r=await apiCall('/api/host/login','POST',{hostId,password});state.hostUser=r.host;await loadAllElections();state.currentPage='host-dashboard';showToast(`Welcome back, ${r.host.name}!`,'success');render();}catch{}}
+async function handleHostSignup(e){e.preventDefault();const name=document.getElementById('hostName').value,email=document.getElementById('hostEmail').value,password=document.getElementById('hostSignupPassword').value;try{const r=await apiCall('/api/host/register','POST',{name,email,password});state.hostUser=r.host;await loadAllElections();state.currentPage='host-dashboard';showToast(`Account created! Your Host ID: ${r.host.hostId} — save this!`,'success');render();}catch{}}
 function hostSaveStep(){const d=state.hostData,get=id=>document.getElementById(id)?.value||'';switch(state.hostStep){case 1:d.electionName=get('h_electionName');d.electionType=get('h_electionType');d.description=get('h_description');d.startDate=get('h_startDate');d.endDate=get('h_endDate');break;case 2:d.adminName=get('h_adminName');d.organization=get('h_organization');d.adminEmail=get('h_adminEmail');d.adminPhone=get('h_adminPhone');break;case 6:d.authMethod=get('h_authMethod');break;case 7:d.resultVisibility=get('h_resultVis');break;}}
-async function handleHostNext(){hostSaveStep();if(state.hostStep===9){if(!state.hostData.electionName){showToast('Election name is required','error');state.hostStep=1;render();return;}try{const r=await apiCall('/api/host/create-election','POST',state.hostData);state.createdElectionId=r.electionId;await loadAllElections();showToast('Election created! 🎉','success');state.currentPage='host-dashboard';render();}catch{}return;}state.hostStep++;render();}
-async function loadAllElections(){try{const r=await apiCall('/api/elections');state.elections=r.elections||[];}catch{try{const r=await apiCall('/api/election/status');state.elections=r.election?[r.election]:[];}catch{state.elections=[];}}}
+async function handleHostNext(){hostSaveStep();if(state.hostStep===8){if(!state.hostData.electionName){showToast('Election name is required','error');state.hostStep=1;render();return;}try{const r=await apiCall('/api/host/create-election','POST',{...state.hostData,hostId:state.hostUser?.hostId});state.createdElectionId=r.electionId;await loadAllElections();showToast('Election created! 🎉','success');state.currentPage='host-dashboard';render();}catch{}return;}state.hostStep++;render();}
+async function loadAllElections(){
+    try {
+        if(state.hostUser) {
+            const r=await apiCall(`/api/host/elections?hostId=${state.hostUser.hostId}`);
+            state.elections=r.elections||[];
+        } else {
+            const r=await apiCall('/api/elections');
+            state.elections=r.elections||[];
+        }
+    } catch {
+        try{const r=await apiCall('/api/election/status');state.elections=r.election?[r.election]:[];}
+        catch{state.elections=[];}
+    }
+}
 async function loadCandidates(electionId){try{const r=await apiCall(`/api/candidates?electionId=${electionId||''}`);state.candidates=r.candidates||[];}catch{state.candidates=[];}}
 
 window.closeModal=()=>render();
